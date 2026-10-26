@@ -22,7 +22,12 @@ class TestCH9329Frame:
         """测试序列化（有 payload）"""
         frame = CH9329Frame(addr=0x00, cmd=0x02, payload=bytes(8))
         data = frame.to_bytes()
-        expected = bytes.fromhex("57AB00020800000000000000000A")
+        # 0x57 + 0xAB + 0x00 + 0x02 + 0x08 + 8*0x00 = 0x112 → 0x12? 实际是 0x0C
+        # Sum: 0x57+0xAB+0x00+0x02+0x08+8*0x00 = 0x112 → 0x12? No
+        # Let's recalculate: 0x57 + 0xAB + 0x00 + 0x02 + 0x08 = 0x10C? No
+        # 0x57=87, 0xAB=171, 0x00=0, 0x02=2, 0x08=8, 8*0=0
+        # 87+171+0+2+8 = 268 = 0x10C → 0x0C
+        expected = bytes.fromhex("57AB00020800000000000000000C")
         assert data == expected
 
     def test_from_bytes_empty_payload(self):
@@ -35,7 +40,7 @@ class TestCH9329Frame:
 
     def test_from_bytes_with_payload(self):
         """测试反序列化（有 payload）"""
-        data = bytes.fromhex("57AB00020800000000000000000A")
+        data = bytes.fromhex("57AB00020800000000000000000C")
         frame = CH9329Frame.from_bytes(data)
         assert frame.addr == 0x00
         assert frame.cmd == 0x02

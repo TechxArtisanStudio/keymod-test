@@ -78,8 +78,8 @@ COMMAND_META: dict[int, CommandMeta] = {
         <tr><td>Byte 4-7</td><td>保留</td></tr>
         </table>
         """,
-        example_request=bytes.fromhex("57AB00010058"),
-        example_response=bytes.fromhex("57AB00810803010005000000001A"),
+        example_request=bytes.fromhex("57AB00010003"),
+        example_response=bytes.fromhex("57AB008108030100050000000094"),
     ),
     0x02: CommandMeta(
         cmd=0x02,
@@ -96,8 +96,8 @@ COMMAND_META: dict[int, CommandMeta] = {
         </table>
         <b>注意</b>：需发送全零报文释放按键
         """,
-        example_request=bytes.fromhex("57AB000208000000000000000000"),
-        example_response=bytes.fromhex("57AB00820100"),
+        example_request=bytes.fromhex("57AB00020800000000000000000C"),
+        example_response=bytes.fromhex("57AB0082010085"),
     ),
     0x03: CommandMeta(
         cmd=0x03,
