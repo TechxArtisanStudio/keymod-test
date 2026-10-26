@@ -1,68 +1,98 @@
-# Keymod Hardware Test Suite
+# Keymod BLE Tester
 
-A test framework for validating keymod hardware components and firmware.
+一款 PyQt6 桌面 BLE 测试工具，用于现场调试 Openterface KeyMod 硬件。
 
-## Overview
+## 功能
 
-This project provides automated testing capabilities for keymod hardware, including:
-- Firmware validation tests
-- Hardware interface verification
-- Performance benchmarking
-- Regression testing suite
+- 🔍 **BLE 扫描**：发现周围 BLE 设备，显示名称、MAC、RSSI
+- 🔗 **手动连接**：点击连接指定设备，支持一键重连
+- 📡 **CH9329 协议**：完整实现 CH9329 兼容命令编解码
+- 🎨 **可视化命令面板**：14 条命令以卡片形式展示，悬停显示帧结构 Tooltip，点击预填发送区
+- 📜 **日志系统**：TX=蓝、RX=绿、ERR=红、系统=灰，支持导出
+- 💾 **连接历史**：持久化保存最近 20 个连接过的设备
 
-## Getting Started
-
-### Prerequisites
-
-- Python 3.8+
-- Required hardware interfaces (USB, I2C, SPI as needed)
-- Test fixtures and hardware under test
-
-### Installation
+## 安装
 
 ```bash
-git clone https://github.com/TechxArtisanStudio/keymod-test.git
-cd keymod-test
 pip install -r requirements.txt
 ```
 
-## Project Structure
+## 运行
+
+```bash
+python src/main.py
+```
+
+## 项目结构
 
 ```
 keymod-test/
-├── tests/              # Test cases and test suites
-├── fixtures/           # Test fixtures and mock hardware
-├── hardware/           # Hardware abstraction layers
-├── utils/              # Utility functions and helpers
-├── config/             # Configuration files
-└── docs/               # Documentation
+├── src/
+│   ├── main.py              # 入口
+│   ├── config.py            # 常量配置
+│   ├── ui/                  # GUI 层
+│   │   ├── main_window.py   # 主窗口
+│   │   ├── scan_panel.py    # 扫描面板
+│   │   ├── command_panel.py # 命令面板
+│   │   ├── command_palette.py # 可视化命令卡片
+│   │   └── widgets.py       # 复用小部件
+│   ├── ble/                 # BLE 通信层
+│   │   ├── scanner.py       # BLE 扫描器
+│   │   ├── client.py        # BLE 客户端
+│   │   └── bridge.py        # 异步桥接
+│   └── protocol/            # 协议层
+│       ├── ch9329.py        # CH9329 编解码
+│       └── models.py        # 数据模型
+├── tests/                   # 测试
+└── docs/                    # 文档
 ```
 
-## Running Tests
+## 使用说明
+
+1. **扫描设备**：点击"开始扫描"，等待 5 秒（可调）
+2. **连接设备**：双击目标设备或右键选择"连接"
+3. **发送命令**：连接成功后，命令面板出现（默认折叠）
+   - 点击标题栏展开命令卡片
+   - 点击卡片自动预填发送区
+   - 修改 payload 后点击"发送"
+4. **查看响应**：日志区显示 TX/RX 数据（彩色区分）
+5. **历史重连**：下次启动自动显示连接过的设备
+
+## 支持的命令
+
+| 命令 | 名称 | 说明 |
+|------|------|------|
+| 0x01 | Get Info | 读取设备信息 |
+| 0x02 | Keyboard | 标准键盘报文 |
+| 0x03 | Media/ACPI | 媒体键/ACPI |
+| 0x04 | Abs Mouse | 绝对鼠标 |
+| 0x05 | Rel Mouse | 相对鼠标 |
+| 0x08 | Get Param | CH9329 兼容配置 |
+| 0x17 | SD Switch | SD 卡切换 |
+| 0x18 | Temperature | DS18B20 温度 |
+| 0x22 | BLE Security | BLE 配对/绑定 |
+| 0x23 | BLE Set Name | 设置 BLE 名称 |
+| 0x26 | Set ECM IP | ECM IP 配置 |
+| 0x27 | Get ECM IP | 读取 ECM IP |
+| 0x30 | USB Work Mode | USB 工作模式 |
+| 0x31 | System Reset | 系统复位 |
+
+## 系统要求
+
+- Python ≥ 3.10
+- macOS / Windows / Linux
+- 支持 BLE 的硬件
+
+## 开发
 
 ```bash
-# Run all tests
+# 运行测试
 pytest tests/
 
-# Run specific test suite
-pytest tests/test_firmware.py
-
-# Run with hardware connected
-pytest tests/ --hardware
+# 导出日志
+Ctrl+E（在主界面）
 ```
 
-## Configuration
+## 许可证
 
-Copy `config.example.yaml` to `config.yaml` and adjust for your hardware setup.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
-
-## License
-
-MIT License - see LICENSE file for details.
+MIT License
