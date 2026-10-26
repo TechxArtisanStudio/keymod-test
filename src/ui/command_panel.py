@@ -1,16 +1,17 @@
-"""命令面板（发送区 + 日志 + 可视化命令面板）"""
+"""命令面板（串口调试助手风格）"""
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QCheckBox, QSplitter, QLabel, QFileDialog
+    QCheckBox, QSplitter, QLabel, QFileDialog, QRadioButton,
+    QButtonGroup, QFrame
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from .widgets import LogArea, HexLineEdit, StatusBadge, CollapsibleSection
-from .command_palette import CommandPalette
+from ui.widgets import LogArea, HexLineEdit
+from ui.command_palette import CommandPalette
 from protocol import CH9329Frame, COMMAND_META
 
 
 class CommandPanel(QWidget):
-    """命令面板（连接成功后显示）"""
+    """命令面板（连接成功后显示）- 串口调试助手风格"""
 
     # 信号：请求发送数据
     send_requested = pyqtSignal(bytes)
@@ -22,104 +23,216 @@ class CommandPanel(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(8)
 
-        # 可折叠的命令面板区域
-        self._collapsible = CollapsibleSection("命令面板 ▶")
-        self._collapsible.set_expanded(False)  # 默认折叠
+        # 快速命令栏（横向滚动）
+        layout.addWidget(self._create_quick_commands())
 
-        # 内部布局
-        inner_layout = QVBoxLayout()
-        inner_layout.setContentsMargins(4, 4, 4, 4)
+        # 主区域：左右分割
+        splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # 命令卡片网格
+        # 左侧：命令面板（可折叠）
+        self._palette_container = QWidget()
+        palette_layout = QVBoxLayout(self._palette_container)
+        palette_layout.setContentsMargins(0, 0, 0, 0)
+
+        self._palette_label = QLabel("命令列表 ▶")
+        self._palette_label.setStyleSheet("color: #CCCCCC; font-weight: bold; padding: 4px; cursor: pointer;")
+        self._palette_label.mousePressEvent = self._toggle_palette
+        palette_layout.addWidget(self._palette_label)
+
         self._palette = CommandPalette()
         self._palette.command_selected.connect(self._on_command_selected)
-        inner_layout.addWidget(self._palette)
+        self._palette.setVisible(True)
+        palette_layout.addWidget(self._palette)
 
-        # 分隔线
-        from PyQt6.QtWidgets import QFrame
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
-        inner_layout.addWidget(line)
+        splitter.addWidget(self._palette_container)
 
-        self._collapsible.add_widget(self._create_inner_widget(inner_layout))
-        layout.addWidget(self._collapsible)
+        # 右侧：日志 + 发送区
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(0, 0, 0, 0)
 
-        # 发送区
-        layout.addWidget(self._create_send_area())
-
-        # 日志区
+        # 日志区（上半部分）
         self._log = LogArea()
-        layout.addWidget(self._log, stretch=1)
+        right_layout.addWidget(self._log, stretch=1)
 
-    def _create_inner_widget(self, inner_layout: QVBoxLayout) -> QWidget:
-        w = QWidget()
-        w.setLayout(inner_layout)
-        return w
+        # 发送区（下半部分）
+        right_layout.addWidget(self._create_send_area())
+
+        splitter.addWidget(right_panel)
+
+        # 设置分割比例
+        splitter.setSizes([250, 650])
+
+        layout.addWidget(splitter, stretch=1)
+
+    def _create_quick_commands(self) -> QWidget:
+        """快速命令栏"""
+        frame = QFrame()
+        frame.setFrameShape(QFrame.Shape.StyledPanel)
+        frame.setStyleSheet("QFrame { background-color: #252526; border: 1px solid #3E3E3E; border-radius: 4px; }")
+
+        layout = QHBoxLayout(frame)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(4)
+
+        label = QLabel("快捷命令:")
+        label.setStyleSheet("color: #888;")
+        layout.addWidget(label)
+
+        # 常用命令按钮
+        quick_cmds = [
+            (0x01, "Get Info", "57 AB 00 01 00 03"),
+            (0x02, "Keyboard", "57 AB 00 02 08 00 00 00 00 00 00 00 00 0C"),
+            (0x03, "Media", "57 AB 00 03 02 00 00 05"),
+            (0x04, "AbsMouse", "57 AB 00 04 07 00 00 00 00 00 00 00 0B"),
+            (0x05, "RelMouse", "57 AB 00 05 05 00 00 00 00 00 0A"),
+        ]
+
+        for cmd, name, hex_data in quick_cmds:
+            btn = QPushButton(name)
+            btn.setFixedHeight(28)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #2D2D30;
+                    color: #CCCCCC;
+                    border: 1px solid #3E3E3E;
+                    border-radius: 3px;
+                    padding: 4px 8px;
+                    font-size: 11px;
+                }
+                QPushButton:hover {
+                    background-color: #007ACC;
+                    color: white;
+                }
+            """)
+            btn.clicked.connect(lambda checked, data=hex_data: self._fill_send_area(data))
+            layout.addWidget(btn)
+
+        layout.addStretch()
+
+        return frame
+
+    def _fill_send_area(self, hex_data: str):
+        """填充发送区"""
+        self._hex_input.setText(hex_data)
+
+    def _toggle_palette(self, event):
+        """切换命令面板显示/隐藏"""
+        visible = self._palette.isVisible()
+        self._palette.setVisible(not visible)
+        self._palette_label.setText("命令列表 ▼" if visible else "命令列表 ▶")
 
     def _create_send_area(self) -> QWidget:
-        w = QWidget()
-        w.setStyleSheet("background-color: #1E1E1E; border-top: 1px solid #3E3E3E;")
-        layout = QVBoxLayout(w)
-        layout.setContentsMargins(8, 6, 8, 6)
+        """发送区（串口调试助手风格）"""
+        frame = QFrame()
+        frame.setFrameShape(QFrame.Shape.StyledPanel)
+        frame.setStyleSheet("""
+            QFrame {
+                background-color: #1E1E1E;
+                border: 1px solid #3E3E3E;
+                border-radius: 4px;
+            }
+        """)
 
-        # 标题行
-        title_row = QHBoxLayout()
-        title_label = QLabel("发送区")
-        title_label.setStyleSheet("color: #CCCCCC; font-weight: 500;")
-        title_row.addWidget(title_label)
-        title_row.addStretch()
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(6)
 
+        # 选项行
+        options_row = QHBoxLayout()
+
+        # 输入模式
+        mode_label = QLabel("发送格式:")
+        mode_label.setStyleSheet("color: #CCCCCC;")
+        options_row.addWidget(mode_label)
+
+        self._hex_radio = QRadioButton("HEX")
+        self._hex_radio.setChecked(True)
+        self._hex_radio.setStyleSheet("color: #CCCCCC;")
+        options_row.addWidget(self._hex_radio)
+
+        self._ascii_radio = QRadioButton("ASCII")
+        self._ascii_radio.setStyleSheet("color: #CCCCCC;")
+        options_row.addWidget(self._ascii_radio)
+
+        self._mode_group = QButtonGroup()
+        self._mode_group.addButton(self._hex_radio)
+        self._mode_group.addButton(self._ascii_radio)
+
+        options_row.addSpacing(20)
+
+        # 自动补校验和
         self._auto_checksum_cb = QCheckBox("自动补校验和")
         self._auto_checksum_cb.setChecked(True)
         self._auto_checksum_cb.setStyleSheet("color: #CCCCCC;")
         self._auto_checksum_cb.stateChanged.connect(self._on_auto_checksum_changed)
-        title_row.addWidget(self._auto_checksum_cb)
+        options_row.addWidget(self._auto_checksum_cb)
 
-        layout.addLayout(title_row)
+        options_row.addStretch()
 
-        # 输入行
-        input_row = QHBoxLayout()
+        # 清空日志按钮
+        clear_btn = QPushButton("清空日志")
+        clear_btn.setFixedHeight(26)
+        clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #3E3E42;
+                color: #CCCCCC;
+                border: 1px solid #555;
+                border-radius: 3px;
+                padding: 4px 12px;
+            }
+            QPushButton:hover { background-color: #505054; }
+        """)
+        clear_btn.clicked.connect(self._log.clear)
+        options_row.addWidget(clear_btn)
+
+        layout.addLayout(options_row)
+
+        # 输入框
+        input_layout = QHBoxLayout()
+
         self._hex_input = HexLineEdit("输入十六进制数据（如 57 AB 00 01 00）...")
-        self._hex_input.setMinimumHeight(28)
+        self._hex_input.setMinimumHeight(32)
         self._hex_input.setStyleSheet("""
             QLineEdit {
                 background-color: #252526;
                 color: #D4D4D4;
                 border: 1px solid #3E3E3E;
-                padding: 4px;
+                padding: 6px;
                 border-radius: 3px;
+                font-family: 'Monaco', 'Consolas', monospace;
+                font-size: 12px;
             }
             QLineEdit:focus {
                 border-color: #007ACC;
             }
         """)
-        input_row.addWidget(self._hex_input)
+        input_layout.addWidget(self._hex_input)
 
         self._send_btn = QPushButton("发送")
-        self._send_btn.setFixedWidth(80)
-        self._send_btn.setMinimumHeight(28)
+        self._send_btn.setFixedSize(80, 32)
         self._send_btn.setStyleSheet("""
             QPushButton {
                 background-color: #007ACC;
                 color: white;
                 border: none;
-                padding: 6px;
                 border-radius: 3px;
-                font-weight: 500;
+                font-weight: bold;
+                font-size: 13px;
             }
             QPushButton:hover { background-color: #1A8BDD; }
             QPushButton:disabled { background-color: #3E3E42; color: #888; }
+            QPushButton:pressed { background-color: #005A9E; }
         """)
         self._send_btn.clicked.connect(self._on_send_clicked)
-        input_row.addWidget(self._send_btn)
+        input_layout.addWidget(self._send_btn)
 
-        layout.addLayout(input_row)
+        layout.addLayout(input_layout)
 
-        return w
+        return frame
 
     def _on_auto_checksum_changed(self, state):
         self._auto_checksum = (state == Qt.CheckState.Checked.value)
@@ -148,8 +261,6 @@ class CommandPanel(QWidget):
             return
 
         # 检查是否需要自动补校验和
-        # 简化：如果用户输入不足 6 字节（不够完整帧），自动补
-        # 否则检查最后一字节是否为校验和（不自动补，由用户决定）
         if len(data) < 6:
             # 自动补全为完整帧
             if len(data) < 2 or data[0] != 0x57 or data[1] != 0xAB:

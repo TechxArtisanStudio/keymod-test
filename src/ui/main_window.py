@@ -52,18 +52,17 @@ class MainWindow(QMainWindow):
         # 主分割器（上下）
         self._splitter = QSplitter(Qt.Orientation.Vertical)
 
-        # 上部：扫描面板
+        # 上部：扫描面板（较小）
         self._scan_panel = ScanPanel()
         self._splitter.addWidget(self._scan_panel)
 
-        # 下部：命令面板（连接后显示）
+        # 下部：命令面板（连接后显示，主要区域）
         self._command_panel = CommandPanel()
         self._command_panel.setVisible(False)  # 默认隐藏
         self._splitter.addWidget(self._command_panel)
 
-        # 设置分割比例（扫描面板占 1/3，命令面板占 2/3）
-        self._splitter.setStretchFactor(0, 1)
-        self._splitter.setStretchFactor(1, 2)
+        # 设置初始大小：扫描面板 150px，命令面板占剩余空间
+        self._splitter.setSizes([150, 500])
 
         layout.addWidget(self._splitter)
 

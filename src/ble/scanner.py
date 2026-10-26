@@ -21,6 +21,10 @@ class BLEScanner:
         self._scanning = True
 
         def callback(device: BLEDevice, adv: AdvertisementData):
+            # 过滤没有名称的设备
+            if not device.name:
+                return
+
             if device.address in self._devices:
                 # 更新 RSSI
                 self._devices[device.address].rssi = adv.rssi
