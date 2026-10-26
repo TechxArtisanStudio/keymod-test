@@ -43,9 +43,15 @@ class BLEClient(QObject):
 
             # 启用 notify（RX 特征）
             if self._rx_char:
-                await self._client.start_notify(self._rx_char, self._on_notify)
+                try:
+                    await self._client.start_notify(self._rx_char, self._on_notify)
+                    self.debug_info.emit(f"✓ Notify 已启用: {self._rx_char.uuid}")
+                except Exception as e:
+                    self.debug_info.emit(f"✗ Notify 启用失败: {e}")
+                    raise
 
             self._connected = True
+            self.debug_info.emit(f"✓ 连接成功，MTU={self._client.mtu_size}")
             self.connected.emit()
             return True
 
@@ -98,6 +104,7 @@ class BLEClient(QObject):
 
     def _on_notify(self, sender: BleakGATTCharacteristic, data: bytearray):
         """Notify 回调（收到数据）"""
+        self.debug_info.emit(f"收到 {len(data)} 字节: {data.hex()}")
         try:
             frame = CH9329Frame.from_bytes(bytes(data))
             self.response_received.emit(frame)
@@ -113,7 +120,9 @@ class BLEClient(QObject):
 
         try:
             data = frame.to_bytes()
+            self.debug_info.emit(f"发送 {len(data)} 字节到 {self._tx_char.uuid}")
             await self._client.write_gatt_char(self._tx_char, data, response=False)
+            self.debug_info.emit("✓ 发送成功")
             return True
         except Exception as e:
             self.error_occurred.emit(f"发送失败: {str(e)}")
