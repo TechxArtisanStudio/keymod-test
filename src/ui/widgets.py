@@ -12,21 +12,27 @@ class HexLineEdit(QLineEdit):
     def __init__(self, placeholder: str = "输入十六进制数据..."):
         super().__init__()
         self.setPlaceholderText(placeholder)
-        self.setFont(QFont("Monospace", 10))
+        self.setFont(QFont("Monaco", 12))
         self.textChanged.connect(self._format_hex)
 
     def _format_hex(self, text: str):
-        # 只保留十六进制字符和空格
-        cleaned = ''.join(c for c in text.upper() if c in '0123456789ABCDEF ')
+        # 只保留十六进制字符（去掉空格和其他字符）
+        hex_only = ''.join(c for c in text.upper() if c in '0123456789ABCDEF')
+
         # 每两个字符加一个空格
-        parts = [cleaned[i:i+2] for i in range(0, len(cleaned), 2)]
-        formatted = ' '.join(parts)
+        formatted = ' '.join(hex_only[i:i+2] for i in range(0, len(hex_only), 2))
+
         if formatted != text:
             cursor_pos = self.cursorPosition()
+            # 计算光标应该在哪
+            # 去掉空格后的位置
+            text_before_cursor = text[:cursor_pos]
+            hex_before = ''.join(c for c in text_before_cursor.upper() if c in '0123456789ABCDEF')
+            new_cursor = len(' '.join(hex_before[i:i+2] for i in range(0, len(hex_before), 2)))
+
             self.blockSignals(True)
             self.setText(formatted)
-            # 简单的光标位置调整
-            self.setCursorPosition(min(cursor_pos, len(formatted)))
+            self.setCursorPosition(new_cursor)
             self.blockSignals(False)
 
     def get_bytes(self) -> bytes:
@@ -34,6 +40,9 @@ class HexLineEdit(QLineEdit):
         text = self.text().replace(' ', '')
         if not text:
             return b""
+        # 如果长度是奇数，补0
+        if len(text) % 2 == 1:
+            text += '0'
         try:
             return bytes.fromhex(text)
         except ValueError:
