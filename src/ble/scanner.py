@@ -1,17 +1,17 @@
 """BLE 扫描器"""
 import asyncio
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 from bleak import BleakScanner
 from bleak.backends.device import BLEDevice
 from bleak.backends.scanner import AdvertisementData
-from ..protocol.models import DeviceInfo
+from protocol.models import DeviceInfo
 
 
 class BLEScanner:
     """BLE 设备扫描器"""
 
     def __init__(self):
-        self._scanner: BleakScanner | None = None
+        self._scanner: Optional[BleakScanner] = None
         self._devices: dict[str, DeviceInfo] = {}
         self._scanning = False
 

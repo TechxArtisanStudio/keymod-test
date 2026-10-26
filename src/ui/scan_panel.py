@@ -1,12 +1,13 @@
 """扫描面板（设备列表 + 连接历史）"""
+from typing import Optional
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QTableView, QHeaderView, QLabel, QSpinBox, QMenu
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QAbstractTableModel
 from PyQt6.QtGui import QAction
-from ..protocol.models import DeviceInfo, ConnectionHistoryEntry
-from ..config import DEFAULT_SCAN_DURATION
+from protocol.models import DeviceInfo, ConnectionHistoryEntry
+from config import DEFAULT_SCAN_DURATION
 
 
 class DeviceTableModel(QAbstractTableModel):
@@ -69,7 +70,7 @@ class DeviceTableModel(QAbstractTableModel):
 
         return None
 
-    def get_device_at(self, row: int) -> DeviceInfo | None:
+    def get_device_at(self, row: int) -> Optional[DeviceInfo]:
         if row < len(self._history):
             entry = self._history[row]
             return DeviceInfo(address=entry.address, name=entry.name)

@@ -4,8 +4,8 @@ from typing import Optional, Callable
 from PyQt6.QtCore import QObject, pyqtSignal
 from bleak import BleakClient
 from bleak.backends.characteristic import BleakGATTCharacteristic
-from ..protocol.ch9329 import CH9329Frame
-from ..config import UART_SERVICE_UUIDS, UART_TX_CHAR_UUIDS, UART_RX_CHAR_UUIDS
+from protocol.ch9329 import CH9329Frame
+from config import UART_SERVICE_UUIDS, UART_TX_CHAR_UUIDS, UART_RX_CHAR_UUIDS
 
 
 class BLEClient(QObject):
@@ -18,9 +18,9 @@ class BLEClient(QObject):
 
     def __init__(self):
         super().__init__()
-        self._client: BleakClient | None = None
-        self._tx_char: BleakGATTCharacteristic | None = None
-        self._rx_char: BleakGATTCharacteristic | None = None
+        self._client: Optional[BleakClient] = None
+        self._tx_char: Optional[BleakGATTCharacteristic] = None
+        self._rx_char: Optional[BleakGATTCharacteristic] = None
         self._connected = False
 
     @property

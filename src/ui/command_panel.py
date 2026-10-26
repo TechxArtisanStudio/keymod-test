@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from .widgets import LogArea, HexLineEdit, StatusBadge, CollapsibleSection
 from .command_palette import CommandPalette
-from ..protocol import CH9329Frame, COMMAND_META
+from protocol import CH9329Frame, COMMAND_META
 
 
 class CommandPanel(QWidget):

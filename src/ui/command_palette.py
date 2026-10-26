@@ -2,7 +2,7 @@
 from PyQt6.QtWidgets import QWidget, QScrollArea, QGridLayout, QLabel
 from PyQt6.QtCore import Qt, pyqtSignal
 from .widgets import CommandCard
-from ..protocol import COMMAND_META
+from protocol import COMMAND_META
 
 
 class CommandPalette(QWidget):

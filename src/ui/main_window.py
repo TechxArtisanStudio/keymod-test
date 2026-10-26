@@ -5,15 +5,15 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QAction
-from .scan_panel import ScanPanel
-from .command_panel import CommandPanel
-from .widgets import StatusBadge
-from ..ble.scanner import BLEScanner
-from ..ble.client import BLEClient
-from ..protocol import CH9329Frame, DeviceInfo, ConnectionHistoryEntry
-from ..config import MAX_HISTORY_ENTRIES
+from ui.scan_panel import ScanPanel
+from ui.command_panel import CommandPanel
+from ui.widgets import StatusBadge
+from ble.scanner import BLEScanner
+from ble.client import BLEClient
+from protocol import CH9329Frame, DeviceInfo, ConnectionHistoryEntry
+from config import MAX_HISTORY_ENTRIES
 from PyQt6.QtCore import QSettings
-from ..config import APP_ORG, APP_NAME
+from config import APP_ORG, APP_NAME
 import asyncio
 
 
