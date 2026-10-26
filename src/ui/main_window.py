@@ -56,9 +56,9 @@ class MainWindow(QMainWindow):
         self._scan_panel = ScanPanel()
         self._splitter.addWidget(self._scan_panel)
 
-        # 下部：命令面板（连接后显示，主要区域）
+        # 下部：命令面板（默认可见，串口调试助手风格）
         self._command_panel = CommandPanel()
-        self._command_panel.setVisible(False)  # 默认隐藏
+        self._command_panel.setVisible(True)  # 默认可见
         self._splitter.addWidget(self._command_panel)
 
         # 设置初始大小：扫描面板 150px，命令面板占剩余空间
@@ -193,8 +193,7 @@ class MainWindow(QMainWindow):
         self._status_badge.set_state("Disconnected", "#F44747")
         self._scan_panel.set_connected(False)
 
-        # 隐藏命令面板
-        self._command_panel.setVisible(False)
+        # 命令面板保持可见
         self._command_panel.append_sys("连接已断开")
 
     # ──────────────────────────────────────────────
