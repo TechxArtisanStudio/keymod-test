@@ -229,62 +229,31 @@ class MainWindow(QMainWindow):
         original_cmd = frame.cmd & 0x7F
         is_error = bool(frame.cmd & 0x40)
 
-        # 状态码映射
-        status_codes = {
-            0x00: "成功",
-            0xE1: "超时",
-            0xE2: "帧头错误",
-            0xE3: "不支持的命令",
-            0xE4: "校验和错误",
-            0xE5: "参数错误",
-            0xE6: "帧/执行错误",
-            0xE9: "Flash 页擦除失败",
-            0xEA: "Flash 字编程失败",
-            0xEB: "Flash 写回验证失败",
-        }
-
-        # 显示帧结构
-        hex_str = ' '.join(f"{b:02X}" for b in frame.to_bytes())
-        self._command_panel.append_sys(f"帧: {hex_str}")
-        self._command_panel.append_sys(
-            f"  Header=57AB, Addr=0x{frame.addr:02X}, "
-            f"Cmd=0x{frame.cmd:02X} (响应 0x{original_cmd:02X}), "
-            f"Len={len(frame.payload)}"
-        )
-
-        if is_error:
-            self._command_panel.append_sys("  类型: 错误响应")
-
-        # 解析 payload
-        if len(frame.payload) == 0:
-            self._command_panel.append_sys("  Payload: (空)")
-            return
-
-        # 第一个字节通常是状态码
-        status = frame.payload[0]
-        status_text = status_codes.get(status, f"未知(0x{status:02X})")
-        self._command_panel.append_sys(f"  Status: 0x{status:02X} ({status_text})")
-
         # 按命令类型解析
         if original_cmd == 0x01 and len(frame.payload) >= 4:
-            # Get Info 响应
-            hw = frame.payload[1] if len(frame.payload) > 1 else 0
-            usb = frame.payload[2] if len(frame.payload) > 2 else 0
-            led = frame.payload[3] if len(frame.payload) > 3 else 0
-            fw = frame.payload[4] if len(frame.payload) > 4 else 0
+            # Get Info 响应 - 没有状态码，直接是设备信息
+            hw = frame.payload[0]
+            usb = frame.payload[1]
+            led = frame.payload[2]
+            fw = frame.payload[3]
 
             hw_names = {0x01: "KVM-GO", 0x02: "MiniKVM", 0x03: "KeyMod"}
             hw_name = hw_names.get(hw, f"Unknown(0x{hw:02X})")
 
             self._command_panel.append_sys(
-                f"  HW=0x{hw:02X} ({hw_name}), "
-                f"USB={'已连接' if usb else '未连接'}, "
-                f"LED=0x{led:02X}, FW=v{fw}"
+                f"✓ {hw_name} | USB={'已连接' if usb else '未连接'} | LED=0x{led:02X} | FW=v{fw}"
             )
         else:
-            # 通用 payload 显示
-            payload_hex = ' '.join(f"{b:02X}" for b in frame.payload)
-            self._command_panel.append_sys(f"  Payload: {payload_hex}")
+            # 其他命令 - 显示状态码和 payload
+            if len(frame.payload) > 0:
+                status = frame.payload[0]
+                status_text = "成功" if status == 0x00 else f"错误 0x{status:02X}"
+                self._command_panel.append_sys(f"  {status_text}")
+                if len(frame.payload) > 1:
+                    payload_hex = ' '.join(f"{b:02X}" for b in frame.payload[1:])
+                    self._command_panel.append_sys(f"  Data: {payload_hex}")
+            else:
+                self._command_panel.append_sys("  (空响应)")
 
     def _on_error(self, msg: str):
         """错误处理"""
