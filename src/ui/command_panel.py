@@ -138,36 +138,72 @@ class CommandPanel(QWidget):
         """)
 
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(6)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
 
         # 选项行
         options_row = QHBoxLayout()
+        options_row.setSpacing(12)  # 统一间距
 
         # 输入模式
         mode_label = QLabel("发送格式:")
-        mode_label.setStyleSheet("color: #CCCCCC;")
+        mode_label.setStyleSheet("color: #CCCCCC; font-size: 12px;")
         options_row.addWidget(mode_label)
 
         self._hex_radio = QRadioButton("HEX")
         self._hex_radio.setChecked(True)
-        self._hex_radio.setStyleSheet("color: #CCCCCC;")
+        self._hex_radio.setStyleSheet("""
+            QRadioButton {
+                color: #CCCCCC;
+                spacing: 6px;
+                font-size: 12px;
+            }
+            QRadioButton::indicator {
+                width: 14px;
+                height: 14px;
+            }
+        """)
         options_row.addWidget(self._hex_radio)
 
         self._ascii_radio = QRadioButton("ASCII")
-        self._ascii_radio.setStyleSheet("color: #CCCCCC;")
+        self._ascii_radio.setStyleSheet("""
+            QRadioButton {
+                color: #CCCCCC;
+                spacing: 6px;
+                font-size: 12px;
+            }
+            QRadioButton::indicator {
+                width: 14px;
+                height: 14px;
+            }
+        """)
         options_row.addWidget(self._ascii_radio)
 
         self._mode_group = QButtonGroup()
         self._mode_group.addButton(self._hex_radio)
         self._mode_group.addButton(self._ascii_radio)
 
-        options_row.addSpacing(20)
+        # 分隔线
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.VLine)
+        separator.setStyleSheet("color: #3E3E3E;")
+        separator.setFixedWidth(1)
+        options_row.addWidget(separator)
 
         # 自动补校验和
         self._auto_checksum_cb = QCheckBox("自动补校验和")
         self._auto_checksum_cb.setChecked(True)
-        self._auto_checksum_cb.setStyleSheet("color: #CCCCCC;")
+        self._auto_checksum_cb.setStyleSheet("""
+            QCheckBox {
+                color: #CCCCCC;
+                spacing: 6px;
+                font-size: 12px;
+            }
+            QCheckBox::indicator {
+                width: 14px;
+                height: 14px;
+            }
+        """)
         self._auto_checksum_cb.stateChanged.connect(self._on_auto_checksum_changed)
         options_row.addWidget(self._auto_checksum_cb)
 
@@ -175,16 +211,19 @@ class CommandPanel(QWidget):
 
         # 清空日志按钮
         clear_btn = QPushButton("清空日志")
-        clear_btn.setFixedHeight(26)
+        clear_btn.setFixedSize(80, 28)
         clear_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3E3E42;
                 color: #CCCCCC;
                 border: 1px solid #555;
                 border-radius: 3px;
-                padding: 4px 12px;
+                font-size: 12px;
             }
-            QPushButton:hover { background-color: #505054; }
+            QPushButton:hover {
+                background-color: #505054;
+                border-color: #666;
+            }
         """)
         clear_btn.clicked.connect(self._log.clear)
         options_row.addWidget(clear_btn)
@@ -193,39 +232,48 @@ class CommandPanel(QWidget):
 
         # 输入框
         input_layout = QHBoxLayout()
+        input_layout.setSpacing(8)
 
         self._hex_input = HexLineEdit("输入十六进制数据（如 57 AB 00 01 00）...")
-        self._hex_input.setMinimumHeight(32)
+        self._hex_input.setMinimumHeight(34)
         self._hex_input.setStyleSheet("""
             QLineEdit {
                 background-color: #252526;
                 color: #D4D4D4;
                 border: 1px solid #3E3E3E;
-                padding: 6px;
-                border-radius: 3px;
+                padding: 6px 10px;
+                border-radius: 4px;
                 font-family: 'Monaco', 'Consolas', monospace;
-                font-size: 12px;
+                font-size: 13px;
             }
             QLineEdit:focus {
                 border-color: #007ACC;
+                background-color: #2D2D30;
             }
         """)
-        input_layout.addWidget(self._hex_input)
+        input_layout.addWidget(self._hex_input, stretch=1)
 
         self._send_btn = QPushButton("发送")
-        self._send_btn.setFixedSize(80, 32)
+        self._send_btn.setFixedSize(90, 34)
         self._send_btn.setStyleSheet("""
             QPushButton {
                 background-color: #007ACC;
                 color: white;
                 border: none;
-                border-radius: 3px;
-                font-weight: bold;
+                border-radius: 4px;
+                font-weight: 600;
                 font-size: 13px;
             }
-            QPushButton:hover { background-color: #1A8BDD; }
-            QPushButton:disabled { background-color: #3E3E42; color: #888; }
-            QPushButton:pressed { background-color: #005A9E; }
+            QPushButton:hover {
+                background-color: #1A8BDD;
+            }
+            QPushButton:pressed {
+                background-color: #005A9E;
+            }
+            QPushButton:disabled {
+                background-color: #3E3E42;
+                color: #888;
+            }
         """)
         self._send_btn.clicked.connect(self._on_send_clicked)
         input_layout.addWidget(self._send_btn)
