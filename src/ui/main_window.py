@@ -134,6 +134,7 @@ class MainWindow(QMainWindow):
         self._client.disconnected.connect(self._on_disconnected)
         self._client.response_received.connect(self._on_response_received)
         self._client.error_occurred.connect(self._on_error)
+        self._client.debug_info.connect(self._on_debug_info)
 
     # ──────────────────────────────────────────────
     # 扫描相关
@@ -289,6 +290,10 @@ class MainWindow(QMainWindow):
         """错误处理"""
         self._command_panel.append_err(msg)
         self._status_badge.set_state("Error", "#F44747")
+
+    def _on_debug_info(self, msg: str):
+        """调试信息"""
+        self._command_panel.append_sys(f"[BLE] {msg}")
 
     # ──────────────────────────────────────────────
     # 历史管理

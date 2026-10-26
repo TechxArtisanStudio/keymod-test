@@ -15,6 +15,7 @@ class BLEClient(QObject):
     disconnected = pyqtSignal()
     response_received = pyqtSignal(object)  # CH9329Frame
     error_occurred = pyqtSignal(str)
+    debug_info = pyqtSignal(str)  # 调试信息
 
     def __init__(self):
         super().__init__()
@@ -72,6 +73,7 @@ class BLEClient(QObject):
                 if tx_char and rx_char:
                     self._tx_char = tx_char
                     self._rx_char = rx_char
+                    self.debug_info.emit(f"TX: {tx_char.uuid}\nRX: {rx_char.uuid}")
                     return True
 
         # 未找到已知服务，尝试自动发现（遍历所有服务）
@@ -81,9 +83,11 @@ class BLEClient(QObject):
                 if "write" in props or "write-without-response" in props:
                     if self._tx_char is None:
                         self._tx_char = char
+                        self.debug_info.emit(f"Auto TX: {char.uuid} (service: {service.uuid})")
                 if "notify" in props or "indicate" in props:
                     if self._rx_char is None:
                         self._rx_char = char
+                        self.debug_info.emit(f"Auto RX: {char.uuid} (service: {service.uuid})")
 
         return self._tx_char is not None and self._rx_char is not None
 
