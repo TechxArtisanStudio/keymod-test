@@ -329,19 +329,16 @@ class CommandPanel(QWidget):
             frame = CH9329Frame(addr, cmd, payload)
             data = frame.to_bytes()
 
-        hex_str = ' '.join(f"{b:02X}" for b in data)
-        self._log.append_tx(hex_str)
+        self._log.append_tx(data)
 
         # 发射信号（由 MainWindow 处理实际发送）
         self.send_requested.emit(data)
 
     def append_tx(self, data: bytes):
-        hex_str = ' '.join(f"{b:02X}" for b in data)
-        self._log.append_tx(hex_str)
+        self._log.append_tx(data)
 
     def append_rx(self, data: bytes):
-        hex_str = ' '.join(f"{b:02X}" for b in data)
-        self._log.append_rx(hex_str)
+        self._log.append_rx(data)
 
     def append_err(self, msg: str):
         self._log.append_err(msg)

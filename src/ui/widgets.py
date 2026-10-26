@@ -121,11 +121,13 @@ class LogArea(QPlainTextEdit):
         self.setTextCursor(cursor)
         self.ensureCursorVisible()
 
-    def append_tx(self, text: str):
-        self.append_log(f"TX: {text}", 'tx')
+    def append_tx(self, data: bytes):
+        hex_str = ' '.join(f"{b:02X}" for b in data)
+        self.append_log(hex_str, 'tx')
 
-    def append_rx(self, text: str):
-        self.append_log(f"RX: {text}", 'rx')
+    def append_rx(self, data: bytes):
+        hex_str = ' '.join(f"{b:02X}" for b in data)
+        self.append_log(hex_str, 'rx')
 
     def append_err(self, text: str):
         self.append_log(f"ERR: {text}", 'err')
