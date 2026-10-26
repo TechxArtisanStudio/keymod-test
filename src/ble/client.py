@@ -30,8 +30,7 @@ class BLEClient(QObject):
     async def connect(self, address: str) -> bool:
         """连接到 BLE 设备"""
         try:
-            self._client = BleakClient(address)
-            self._client.set_disconnected_callback(self._on_disconnect)
+            self._client = BleakClient(address, disconnected_callback=self._on_disconnect)
 
             await self._client.connect()
 
