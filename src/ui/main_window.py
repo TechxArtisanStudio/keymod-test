@@ -1,12 +1,15 @@
 """主窗口"""
+import sys
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QSplitter, QStatusBar, QMenuBar, QMenu
+    QSplitter, QStatusBar, QMenuBar, QMenu, QTabWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QAction
 from ui.scan_panel import ScanPanel
 from ui.command_panel import CommandPanel
+from ui.ble_name_panel import BLENamePanel
+from ui.ecm_test_panel import ECMTestPanel
 from ui.widgets import StatusBadge
 from ble.scanner import BLEScanner
 from ble.client import BLEClient
@@ -49,22 +52,48 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(8)
 
-        # 主分割器（上下）
-        self._splitter = QSplitter(Qt.Orientation.Vertical)
-
-        # 上部：扫描面板（较小）
+        # 顶部：扫描面板（全局共享）
         self._scan_panel = ScanPanel()
-        self._splitter.addWidget(self._scan_panel)
+        layout.addWidget(self._scan_panel)
 
-        # 下部：命令面板（默认可见，串口调试助手风格）
+        # 下部：标签页切换
+        self._tab_widget = QTabWidget()
+        self._tab_widget.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #3E3E3E;
+                background-color: #1E1E1E;
+            }
+            QTabBar::tab {
+                background-color: #2D2D2D;
+                color: #CCCCCC;
+                padding: 8px 16px;
+                border: 1px solid #3E3E3E;
+                border-bottom: none;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected {
+                background-color: #1E1E1E;
+                color: #FFFFFF;
+                border-bottom: 2px solid #007ACC;
+            }
+            QTabBar::tab:hover {
+                background-color: #3E3E42;
+            }
+        """)
+
+        # Tab 0: 命令调试
         self._command_panel = CommandPanel()
-        self._command_panel.setVisible(True)  # 默认可见
-        self._splitter.addWidget(self._command_panel)
+        self._tab_widget.addTab(self._command_panel, "命令调试")
 
-        # 设置初始大小：扫描面板 150px，命令面板占剩余空间
-        self._splitter.setSizes([150, 500])
+        # Tab 1: BLE 名称修改
+        self._ble_name_panel = BLENamePanel()
+        self._tab_widget.addTab(self._ble_name_panel, "BLE 名称")
 
-        layout.addWidget(self._splitter)
+        # Tab 2: ECM 网络测试
+        self._ecm_test_panel = ECMTestPanel()
+        self._tab_widget.addTab(self._ecm_test_panel, "ECM 网络")
+
+        layout.addWidget(self._tab_widget, stretch=1)
 
         # 菜单栏
         self._setup_menubar()
@@ -129,7 +158,13 @@ class MainWindow(QMainWindow):
         # 命令面板信号
         self._command_panel.send_requested.connect(self._on_send_requested)
 
-        # BLE 客户端信号
+        # BLE 名称面板信号
+        self._ble_name_panel.send_requested.connect(self._on_send_requested)
+
+        # ECM 测试面板信号
+        self._ecm_test_panel.send_requested.connect(self._on_send_requested)
+
+        # BLE 客户端信号 — 信号桥已处理线程安全，直接用默认连接
         self._client.connected.connect(self._on_connected)
         self._client.disconnected.connect(self._on_disconnected)
         self._client.response_received.connect(self._on_response_received)
@@ -167,35 +202,74 @@ class MainWindow(QMainWindow):
         asyncio.create_task(self._do_connect(address))
 
     async def _do_connect(self, address: str):
-        """执行连接（异步）"""
-        self._status_badge.set_state("Connecting...", "#DCDCAA")
-        self._scan_panel.set_connected(True)
+        """执行连接（异步）
 
-        success = await self._client.connect(address)
-        if not success:
+        调试信息在此处发射，而不是在 BLEClient.connect() 内部，
+        因为在 macOS 上 CoreBluetooth 的操作使用后台线程，
+        在此期间发射 Qt 信号会导致线程冲突和 segfault。
+        """
+        try:
+            self._status_badge.set_state("Connecting...", "#DCDCAA")
+            self._scan_panel.set_connected(True)
+
+            success = await self._client.connect(address)
+
+            if success:
+                # 连接成功后发射调试信息
+                try:
+                    tx_uuid = self._client._tx_char.uuid if self._client._tx_char else "?"
+                    rx_uuid = self._client._rx_char.uuid if self._client._rx_char else "?"
+                    self._on_debug_info(f"TX: {tx_uuid}")
+                    self._on_debug_info(f"RX: {rx_uuid}")
+                    self._on_debug_info(f"✓ Notify 已启用: {rx_uuid}")
+                    self._on_debug_info(f"✓ 连接成功，MTU={self._client._client.mtu_size if self._client._client else '?'}")
+                except Exception:
+                    pass
+            else:
+                self._status_badge.set_state("Disconnected", "#F44747")
+                self._scan_panel.set_connected(False)
+        except Exception as e:
+            # 连接过程中的异常
             self._status_badge.set_state("Disconnected", "#F44747")
             self._scan_panel.set_connected(False)
+            self._on_error(f"连接异常: {str(e)}")
 
     def _on_connected(self):
         """连接成功"""
-        addr = self._client._client.address if self._client._client else "Unknown"
-        self._status_badge.set_state(f"Connected: {addr}", "#4EC9B0")
-        self._scan_panel.set_connected(True)
+        # 使用缓存的设备地址，避免访问 BleakClient
+        addr = self._client.device_address or "Unknown"
 
-        # 显示命令面板
-        self._command_panel.setVisible(True)
-        self._command_panel.append_sys(f"已连接到 {addr}")
+        try:
+            self._status_badge.set_state(f"Connected: {addr}", "#4EC9B0")
+            self._scan_panel.set_connected(True)
+            self._ble_name_panel.set_connection_state(True)
+            self._ecm_test_panel.set_connection_state(True)
 
-        # 保存到历史
-        self._save_to_history(addr)
+            # 日志提示
+            self._command_panel.append_sys(f"已连接到 {addr}")
+            self._ble_name_panel.append_sys(f"已连接到 {addr}")
+            self._ecm_test_panel.append_sys(f"已连接到 {addr}")
+
+            # 保存到历史
+            self._save_to_history(addr)
+        except Exception as e:
+            self._on_error(f"连接回调异常: {str(e)}")
 
     def _on_disconnected(self):
         """断开连接"""
-        self._status_badge.set_state("Disconnected", "#F44747")
-        self._scan_panel.set_connected(False)
+        try:
+            self._status_badge.set_state("Disconnected", "#F44747")
+            self._scan_panel.set_connected(False)
+            self._ble_name_panel.set_connection_state(False)
+            self._ecm_test_panel.set_connection_state(False)
 
-        # 命令面板保持可见
-        self._command_panel.append_sys("连接已断开")
+            # 日志提示
+            self._command_panel.append_sys("连接已断开")
+            self._ble_name_panel.append_sys("连接已断开")
+            self._ecm_test_panel.append_sys("连接已断开")
+        except Exception as e:
+            # 避免在 UI 更新时崩溃
+            print(f"_on_disconnected error: {e}", file=sys.stderr)
 
     # ──────────────────────────────────────────────
     # 收发相关
@@ -205,64 +279,164 @@ class MainWindow(QMainWindow):
         """发送数据"""
         try:
             frame = CH9329Frame.from_bytes(data)
-            asyncio.create_task(self._do_send(frame))
+            task = asyncio.create_task(self._do_send(frame))
+            # 添加异常回调，防止未捕获的异常导致闪退
+            task.add_done_callback(self._on_send_task_done)
         except Exception as e:
-            self._command_panel.append_err(f"帧构建失败: {str(e)}")
+            err_msg = f"帧构建失败: {str(e)}"
+            self._command_panel.append_err(err_msg)
+            self._ble_name_panel.append_err(err_msg)
+
+    def _on_send_task_done(self, task):
+        """发送任务完成回调（捕获未处理异常）"""
+        try:
+            exc = task.exception()
+            if exc:
+                err_msg = f"发送异常: {str(exc)}"
+                self._command_panel.append_err(err_msg)
+                self._ble_name_panel.append_err(err_msg)
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            # 彻底忽略任何异常，防止回调本身导致闪退
+            pass
 
     async def _do_send(self, frame: CH9329Frame):
-        """执行发送（异步）"""
-        success = await self._client.send(frame)
-        if not success:
-            self._command_panel.append_err("发送失败")
+        """执行发送（异步）
+
+        对于名称修改命令（0x23），设备可能会立即重启/断开，
+        所以发送后不做任何 UI 更新，让响应处理或断开检测来更新 UI。
+        """
+        try:
+            data = frame.to_bytes()
+            # 在 BLE 操作之前安全地获取 UUID（避免在 write 期间访问）
+            try:
+                tx_uuid = self._client._tx_char.uuid if self._client._tx_char else "?"
+            except Exception:
+                tx_uuid = "?"
+            self._on_debug_info(f"发送 {len(data)} 字节到 {tx_uuid}")
+
+            # 检查是否是名称修改命令（0x23）
+            is_name_change = (frame.cmd == 0x23)
+
+            success = await self._client.send(frame)
+
+            if success:
+                if is_name_change:
+                    # 名称修改命令：禁用连接轮询 3 秒，防止设备重启时检测到断开导致闪退
+                    self._client.disable_polling_for(3.0)
+                    # 延迟显示成功消息，避免在 BLE 操作后立即更新 UI
+                    from PyQt6.QtCore import QTimer
+                    QTimer.singleShot(100, lambda: self._on_debug_info("✓ 名称修改命令已发送，设备正在重启..."))
+                else:
+                    self._on_debug_info("✓ 发送成功")
+            else:
+                self._command_panel.append_err("发送失败")
+                self._ble_name_panel.append_err("发送失败")
+        except Exception as e:
+            # 捕获所有异常，防止连接断开时闪退
+            err_msg = f"发送错误: {str(e)}"
+            self._command_panel.append_err(err_msg)
+            self._ble_name_panel.append_err(err_msg)
 
     def _on_response_received(self, frame: CH9329Frame):
-        """收到响应"""
-        data = frame.to_bytes()
-        self._command_panel.append_rx(data)
+        """收到响应
 
-        # 解析响应内容
-        self._parse_response(frame)
+        所有 UI 更新用 try/except 包裹，防止任何异常导致闪退。
+        对于名称修改命令的响应，延迟处理，避免在 BLE 操作期间更新 UI。
+        """
+        try:
+            # 检查是否是名称修改命令的响应（0x23 | 0x80 = 0xA3）
+            is_name_change_response = ((frame.cmd & 0x7F) == 0x23)
+
+            if is_name_change_response:
+                # 名称修改响应：延迟处理，避免在 BLE 操作期间更新 UI
+                from PyQt6.QtCore import QTimer
+                # 使用 weak reference 避免循环引用
+                import weakref
+                self_ref = weakref.ref(self)
+                frame_data = frame.to_bytes()
+
+                def delayed_handle():
+                    self_obj = self_ref()
+                    if self_obj:
+                        self_obj._handle_name_change_response(frame_data)
+
+                QTimer.singleShot(200, delayed_handle)
+            else:
+                # 普通响应：立即处理
+                data = frame.to_bytes()
+                self._command_panel.append_rx(data)
+                self._ble_name_panel.append_rx(data)
+                self._ecm_test_panel.append_rx(data)
+                self._parse_response(frame)
+        except Exception as e:
+            # 捕获所有异常，防止响应处理导致闪退
+            print(f"_on_response_received error: {e}", file=sys.stderr)
+
+    def _handle_name_change_response(self, data: bytes):
+        """延迟处理名称修改响应"""
+        try:
+            self._command_panel.append_rx(data)
+            self._ble_name_panel.append_rx(data)
+            self._ecm_test_panel.append_rx(data)
+
+            # 解析响应
+            frame = CH9329Frame.from_bytes(data)
+            self._parse_response(frame)
+        except Exception as e:
+            print(f"_handle_name_change_response error: {e}", file=sys.stderr)
 
     def _parse_response(self, frame: CH9329Frame):
         """解析响应帧并显示字段含义"""
-        # 提取原始命令（响应命令 = 原命令 | 0x80 或 | 0xC0）
-        original_cmd = frame.cmd & 0x7F
-        is_error = bool(frame.cmd & 0x40)
+        try:
+            # 提取原始命令（响应命令 = 原命令 | 0x80 或 | 0xC0）
+            original_cmd = frame.cmd & 0x7F
+            is_error = bool(frame.cmd & 0x40)
 
-        # 按命令类型解析
-        if original_cmd == 0x01 and len(frame.payload) >= 4:
-            # Get Info 响应 - 没有状态码，直接是设备信息
-            hw = frame.payload[0]
-            usb = frame.payload[1]
-            led = frame.payload[2]
-            fw = frame.payload[3]
+            # 按命令类型解析
+            if original_cmd == 0x01 and len(frame.payload) >= 4:
+                # Get Info 响应 - 没有状态码，直接是设备信息
+                hw = frame.payload[0]
+                usb = frame.payload[1]
+                led = frame.payload[2]
+                fw = frame.payload[3]
 
-            hw_names = {0x01: "KVM-GO", 0x02: "MiniKVM", 0x03: "KeyMod"}
-            hw_name = hw_names.get(hw, f"Unknown(0x{hw:02X})")
+                hw_names = {0x01: "KVM-GO", 0x02: "MiniKVM", 0x03: "KeyMod"}
+                hw_name = hw_names.get(hw, f"Unknown(0x{hw:02X})")
 
-            self._command_panel.append_sys(
-                f"✓ {hw_name} | USB={'已连接' if usb else '未连接'} | LED=0x{led:02X} | FW=v{fw}"
-            )
-        else:
-            # 其他命令 - 显示状态码和 payload
-            if len(frame.payload) > 0:
-                status = frame.payload[0]
-                status_text = "成功" if status == 0x00 else f"错误 0x{status:02X}"
-                self._command_panel.append_sys(f"  {status_text}")
-                if len(frame.payload) > 1:
-                    payload_hex = ' '.join(f"{b:02X}" for b in frame.payload[1:])
-                    self._command_panel.append_sys(f"  Data: {payload_hex}")
+                self._command_panel.append_sys(
+                    f"✓ {hw_name} | USB={'已连接' if usb else '未连接'} | LED=0x{led:02X} | FW=v{fw}"
+                )
             else:
-                self._command_panel.append_sys("  (空响应)")
+                # 其他命令 - 显示状态码和 payload
+                if len(frame.payload) > 0:
+                    status = frame.payload[0]
+                    status_text = "成功" if status == 0x00 else f"错误 0x{status:02X}"
+                    self._command_panel.append_sys(f"  {status_text}")
+                    self._ble_name_panel.append_sys(f"  {status_text}")
+                    if len(frame.payload) > 1:
+                        payload_hex = ' '.join(f"{b:02X}" for b in frame.payload[1:])
+                        self._command_panel.append_sys(f"  Data: {payload_hex}")
+                        self._ble_name_panel.append_sys(f"  Data: {payload_hex}")
+                else:
+                    self._command_panel.append_sys("  (空响应)")
+                    self._ble_name_panel.append_sys("  (空响应)")
+        except Exception as e:
+            print(f"_parse_response error: {e}", file=sys.stderr)
 
     def _on_error(self, msg: str):
         """错误处理"""
         self._command_panel.append_err(msg)
+        self._ble_name_panel.append_err(msg)
+        self._ecm_test_panel.append_err(msg)
         self._status_badge.set_state("Error", "#F44747")
 
     def _on_debug_info(self, msg: str):
         """调试信息"""
         self._command_panel.append_sys(f"[BLE] {msg}")
+        self._ble_name_panel.append_sys(f"[BLE] {msg}")
+        self._ecm_test_panel.append_sys(f"[BLE] {msg}")
 
     # ──────────────────────────────────────────────
     # 历史管理
@@ -339,10 +513,21 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         """窗口关闭时清理"""
+        # 取消所有待处理的异步任务
+        if self._scan_task and not self._scan_task.done():
+            self._scan_task.cancel()
+
         asyncio.create_task(self._cleanup())
         event.accept()
 
     async def _cleanup(self):
         """清理资源"""
-        await self._client.disconnect()
-        await self._scanner.stop()
+        try:
+            await self._client.disconnect()
+            self._client.cleanup()
+        except Exception:
+            pass
+        try:
+            await self._scanner.stop()
+        except Exception:
+            pass

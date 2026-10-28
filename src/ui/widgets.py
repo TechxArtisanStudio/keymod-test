@@ -109,7 +109,7 @@ class LogArea(QPlainTextEdit):
     def __init__(self):
         super().__init__()
         self.setReadOnly(True)
-        self.setFont(QFont("Monospace", 9))
+        self.setFont(QFont("Courier New", 9))
         self.setMaximumBlockCount(10000)
 
         # 预定义颜色

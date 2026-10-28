@@ -38,7 +38,7 @@ class CommandPanel(QWidget):
         palette_layout.setContentsMargins(0, 0, 0, 0)
 
         self._palette_label = QLabel("命令列表 ▶")
-        self._palette_label.setStyleSheet("color: #CCCCCC; font-weight: bold; padding: 4px; cursor: pointer;")
+        self._palette_label.setStyleSheet("color: #CCCCCC; font-weight: bold; padding: 4px;")
         self._palette_label.mousePressEvent = self._toggle_palette
         palette_layout.addWidget(self._palette_label)
 
