@@ -18,6 +18,13 @@ class DeviceTableModel(QAbstractTableModel):
         super().__init__()
         self._devices: list[DeviceInfo] = []
         self._history: list[ConnectionHistoryEntry] = []
+        self._connected_address: str = ""
+
+    def set_connected_address(self, address: str):
+        """设置当前连接的设备地址（用于显示"已连接"）"""
+        self._connected_address = address
+        self.beginResetModel()
+        self.endResetModel()
 
     def set_devices(self, devices: list[DeviceInfo]):
         self.beginResetModel()
@@ -66,6 +73,9 @@ class DeviceTableModel(QAbstractTableModel):
             elif col == 2:
                 return str(dev.rssi)
             elif col == 3:
+                # 已连接的设备显示"已连接"
+                if hasattr(self, '_connected_address') and dev.address == self._connected_address:
+                    return "已连接"
                 return "连接"
 
         return None
@@ -84,9 +94,12 @@ class ScanPanel(QWidget):
     scan_requested = pyqtSignal(float)  # duration
     stop_requested = pyqtSignal()
     connect_requested = pyqtSignal(str)  # address
+    disconnect_requested = pyqtSignal()  # 断开连接
 
     def __init__(self):
         super().__init__()
+        self._connected = False
+        self._connected_address = ""
         self._setup_ui()
 
     def _setup_ui(self):
@@ -137,6 +150,24 @@ class ScanPanel(QWidget):
         self._scan_btn.clicked.connect(self._on_scan_clicked)
         title_row.addWidget(self._scan_btn)
 
+        # 断开按钮（连接后显示）
+        self._disconnect_btn = QPushButton("断开连接")
+        self._disconnect_btn.setFixedWidth(100)
+        self._disconnect_btn.setVisible(False)
+        self._disconnect_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #CE9178;
+                color: white;
+                border: none;
+                padding: 6px;
+                border-radius: 3px;
+                font-weight: 500;
+            }
+            QPushButton:hover { background-color: #D4A585; }
+        """)
+        self._disconnect_btn.clicked.connect(lambda: self.disconnect_requested.emit())
+        title_row.addWidget(self._disconnect_btn)
+
         layout.addLayout(title_row)
 
         # 设备表格
@@ -180,6 +211,7 @@ class ScanPanel(QWidget):
             }
         """)
         self._table.doubleClicked.connect(self._on_row_double_clicked)
+        self._table.clicked.connect(self._on_row_clicked)
 
         # 右键菜单
         self._table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -231,6 +263,13 @@ class ScanPanel(QWidget):
         if dev:
             self.connect_requested.emit(dev.address)
 
+    def _on_row_clicked(self, index):
+        """单击行 — 如果点击的是操作列（第3列），触发连接"""
+        if index.column() == 3:
+            dev = self._model.get_device_at(index.row())
+            if dev:
+                self.connect_requested.emit(dev.address)
+
     def _on_context_menu(self, pos):
         """右键菜单"""
         index = self._table.indexAt(pos)
@@ -277,9 +316,21 @@ class ScanPanel(QWidget):
             self._scan_btn.setText("开始扫描")
             self._status_label.setText("就绪")
 
-    def set_connected(self, connected: bool):
-        """设置连接状态（连接后禁用扫描）"""
-        self._scan_btn.setEnabled(not connected)
-        self._duration_spin.setEnabled(not connected)
+    def set_connected(self, connected: bool, address: str = ""):
+        """设置连接状态"""
+        self._connected = connected
+        self._connected_address = address
+
+        # 更新模型中的连接地址（用于显示"已连接"）
+        self._model.set_connected_address(address if connected else "")
+
+        # 断开按钮
+        self._disconnect_btn.setVisible(connected)
+
+        # 扫描按钮：连接后仍然可以扫描
+        # 不再禁用扫描
+
         if connected:
-            self._status_label.setText("已连接")
+            self._status_label.setText(f"已连接: {address}")
+        else:
+            self._status_label.setText("就绪")

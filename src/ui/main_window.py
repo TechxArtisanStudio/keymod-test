@@ -154,6 +154,7 @@ class MainWindow(QMainWindow):
         self._scan_panel.scan_requested.connect(self._on_scan_requested)
         self._scan_panel.stop_requested.connect(self._on_stop_requested)
         self._scan_panel.connect_requested.connect(self._on_connect_requested)
+        self._scan_panel.disconnect_requested.connect(self._on_disconnect_requested)
 
         # 命令面板信号
         self._command_panel.send_requested.connect(self._on_send_requested)
@@ -192,6 +193,17 @@ class MainWindow(QMainWindow):
     def _on_stop_requested(self):
         """停止扫描"""
         asyncio.create_task(self._scanner.stop())
+
+    def _on_disconnect_requested(self):
+        """请求断开连接"""
+        asyncio.create_task(self._do_disconnect())
+
+    async def _do_disconnect(self):
+        """执行断开（异步）"""
+        try:
+            await self._client.disconnect()
+        except Exception as e:
+            self._on_error(f"断开异常: {str(e)}")
 
     # ──────────────────────────────────────────────
     # 连接相关
@@ -241,7 +253,7 @@ class MainWindow(QMainWindow):
 
         try:
             self._status_badge.set_state(f"Connected: {addr}", "#4EC9B0")
-            self._scan_panel.set_connected(True)
+            self._scan_panel.set_connected(True, addr)
             self._ble_name_panel.set_connection_state(True)
             self._ecm_test_panel.set_connection_state(True)
 
