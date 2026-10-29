@@ -95,7 +95,9 @@ jobs:
           cd dist
           # 创建 ZIP
           7z a KeymodTest-windows.zip KeymodTest/
-          echo "ZIP created: $(ls -lh KeymodTest-windows.zip)"
+          # 显示文件大小
+          $file = Get-Item KeymodTest-windows.zip
+          Write-Host "ZIP created: $($file.Name) - $([math]::Round($file.Length / 1MB, 2)) MB"
 
       - name: Package for Linux
         if: matrix.os == 'ubuntu-latest'
