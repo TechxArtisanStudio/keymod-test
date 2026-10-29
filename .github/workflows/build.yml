@@ -51,11 +51,28 @@ jobs:
           pyinstaller --noconfirm --onedir --windowed \
             --name "KeymodTest" \
             --add-data "src:src" \
+            --add-data "config.py:." \
             --hidden-import "bleak.backends.corebluetooth" \
             --hidden-import "bleak.backends.corebluetooth.CentralManagerDelegate" \
             --hidden-import "bleak.backends.corebluetooth.PeripheralDelegate" \
             --hidden-import "bleak.backends.corebluetooth.scanner" \
             --hidden-import "bleak.backends.corebluetooth.client" \
+            --hidden-import "PyQt6.QtCore" \
+            --hidden-import "PyQt6.QtWidgets" \
+            --hidden-import "PyQt6.QtGui" \
+            --hidden-import "qasync" \
+            --hidden-import "ui.main_window" \
+            --hidden-import "ui.scan_panel" \
+            --hidden-import "ui.command_panel" \
+            --hidden-import "ui.ble_name_panel" \
+            --hidden-import "ui.ecm_test_panel" \
+            --hidden-import "ui.widgets" \
+            --hidden-import "ui.command_palette" \
+            --hidden-import "ble.scanner" \
+            --hidden-import "ble.client" \
+            --hidden-import "protocol.ch9329" \
+            --hidden-import "protocol.models" \
+            --hidden-import "config" \
             --osx-bundle-identifier com.techxartisanstudio.keymodtest \
             src/main.py
 
@@ -65,9 +82,26 @@ jobs:
           pyinstaller --noconfirm --onedir --windowed `
             --name "KeymodTest" `
             --add-data "src;src" `
+            --add-data "config.py;." `
             --hidden-import "bleak.backends.winrt" `
             --hidden-import "bleak.backends.winrt.scanner" `
             --hidden-import "bleak.backends.winrt.client" `
+            --hidden-import "PyQt6.QtCore" `
+            --hidden-import "PyQt6.QtWidgets" `
+            --hidden-import "PyQt6.QtGui" `
+            --hidden-import "qasync" `
+            --hidden-import "ui.main_window" `
+            --hidden-import "ui.scan_panel" `
+            --hidden-import "ui.command_panel" `
+            --hidden-import "ui.ble_name_panel" `
+            --hidden-import "ui.ecm_test_panel" `
+            --hidden-import "ui.widgets" `
+            --hidden-import "ui.command_palette" `
+            --hidden-import "ble.scanner" `
+            --hidden-import "ble.client" `
+            --hidden-import "protocol.ch9329" `
+            --hidden-import "protocol.models" `
+            --hidden-import "config" `
             src/main.py
 
       - name: Build with PyInstaller (Linux)
@@ -76,9 +110,26 @@ jobs:
           pyinstaller --noconfirm --onedir --windowed \
             --name "KeymodTest" \
             --add-data "src:src" \
+            --add-data "config.py:." \
             --hidden-import "bleak.backends.bluezdbus" \
             --hidden-import "bleak.backends.bluezdbus.scanner" \
             --hidden-import "bleak.backends.bluezdbus.client" \
+            --hidden-import "PyQt6.QtCore" \
+            --hidden-import "PyQt6.QtWidgets" \
+            --hidden-import "PyQt6.QtGui" \
+            --hidden-import "qasync" \
+            --hidden-import "ui.main_window" \
+            --hidden-import "ui.scan_panel" \
+            --hidden-import "ui.command_panel" \
+            --hidden-import "ui.ble_name_panel" \
+            --hidden-import "ui.ecm_test_panel" \
+            --hidden-import "ui.widgets" \
+            --hidden-import "ui.command_palette" \
+            --hidden-import "ble.scanner" \
+            --hidden-import "ble.client" \
+            --hidden-import "protocol.ch9329" \
+            --hidden-import "protocol.models" \
+            --hidden-import "config" \
             src/main.py
 
       - name: Package for macOS
@@ -91,10 +142,11 @@ jobs:
 
       - name: Package for Windows
         if: matrix.os == 'windows-latest'
+        shell: pwsh
         run: |
           cd dist
-          # 创建 ZIP
-          7z a KeymodTest-windows.zip KeymodTest/
+          # 创建 ZIP - 只包含 KeymodTest 文件夹内容，不包两层
+          Compress-Archive -Path "KeymodTest\*" -DestinationPath "KeymodTest-windows.zip"
           # 显示文件大小
           $file = Get-Item KeymodTest-windows.zip
           Write-Host "ZIP created: $($file.Name) - $([math]::Round($file.Length / 1MB, 2)) MB"
@@ -103,8 +155,8 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           cd dist
-          # 创建 tar.gz
-          tar -czf KeymodTest-linux.tar.gz KeymodTest/
+          # 创建 tar.gz - 只包含 KeymodTest 文件夹内容，不包两层
+          tar -czf KeymodTest-linux.tar.gz -C KeymodTest .
           echo "Archive created: $(ls -lh KeymodTest-linux.tar.gz)"
 
       - name: Upload artifact
