@@ -121,38 +121,42 @@ class ECMTestPanel(QWidget):
             QGroupBox {
                 color: #CCCCCC;
                 font-weight: bold;
+                font-size: 13px;
                 border: 1px solid #3E3E3E;
-                border-radius: 4px;
-                margin-top: 10px;
-                padding-top: 10px;
+                border-radius: 6px;
+                margin-top: 14px;
+                padding-top: 14px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px;
+                left: 12px;
+                padding: 0 8px;
             }
         """)
         ip_layout = QGridLayout(ip_group)
-        ip_layout.setSpacing(8)
-        ip_layout.setContentsMargins(12, 20, 12, 12)
+        ip_layout.setSpacing(10)
+        ip_layout.setContentsMargins(16, 24, 16, 16)
+        ip_layout.setColumnStretch(1, 1)
 
         # 标签
         self._ip_labels = {}
         fields = [
-            ("host_ip", "Host IP:"),
-            ("dev_ip", "Target IP:"),
-            ("subnet", "子网掩码:"),
-            ("gateway", "网关:"),
-            ("mac", "MAC 地址:"),
+            ("host_ip", "Host IP:", "#88AAFF"),
+            ("dev_ip", "Target IP:", "#88FFAA"),
+            ("subnet", "子网掩码:", "#AAAAAA"),
+            ("gateway", "网关:", "#AAAAAA"),
+            ("mac", "MAC 地址:", "#FFAA88"),
         ]
-        for i, (key, label_text) in enumerate(fields):
+        for i, (key, label_text, color) in enumerate(fields):
             label = QLabel(label_text)
-            label.setStyleSheet("color: #888; font-size: 12px;")
+            label.setStyleSheet(f"color: {color}; font-size: 13px; font-weight: 500;")
+            label.setFixedWidth(90)
             ip_layout.addWidget(label, i, 0)
 
             value = QLabel("—")
-            value.setStyleSheet("color: #D4D4D4; font-size: 12px; font-family: Monaco, Consolas, monospace;")
+            value.setStyleSheet(f"color: {color}; font-size: 14px; font-family: Monaco, Consolas, monospace; font-weight: 500;")
             value.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            value.setMinimumWidth(180)
             self._ip_labels[key] = value
             ip_layout.addWidget(value, i, 1)
 
