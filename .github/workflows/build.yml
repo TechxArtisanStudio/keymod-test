@@ -3,10 +3,10 @@ name: Build and Package
 on:
   push:
     tags:
-      - 'v*'  # 推送标签时触发（如 v1.0.0）
+      - 'v*'
     branches:
-      - main  # 推送到 main 分支时触发
-  workflow_dispatch:  # 手动触发
+      - main
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,16 +18,16 @@ jobs:
         include:
           - os: macos-latest
             artifact_name: keymod-test-macos
-            executable_name: keymod-test
-            asset_name: KeymodTest-macos.dmg
+            executable_name: KeymodTest
+            use_onefile: false
           - os: windows-latest
             artifact_name: keymod-test-windows
-            executable_name: keymod-test.exe
-            asset_name: KeymodTest-windows.zip
+            executable_name: KeymodTest.exe
+            use_onefile: true
           - os: ubuntu-latest
             artifact_name: keymod-test-linux
             executable_name: keymod-test
-            asset_name: KeymodTest-linux.tar.gz
+            use_onefile: true
 
     steps:
       - name: Checkout code
@@ -45,7 +45,7 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Build with PyInstaller (macOS)
+      - name: Build with PyInstaller (macOS - onedir for .app bundle)
         if: matrix.os == 'macos-latest'
         run: |
           pyinstaller --noconfirm --onedir --windowed \
@@ -76,10 +76,11 @@ jobs:
             --osx-bundle-identifier com.techxartisanstudio.keymodtest \
             src/main.py
 
-      - name: Build with PyInstaller (Windows)
+      - name: Build with PyInstaller (Windows - onefile for single exe)
         if: matrix.os == 'windows-latest'
+        shell: pwsh
         run: |
-          pyinstaller --noconfirm --onedir --windowed `
+          pyinstaller --noconfirm --onefile --windowed `
             --name "KeymodTest" `
             --add-data "src;src" `
             --add-data "src/config.py;." `
@@ -104,11 +105,11 @@ jobs:
             --hidden-import "config" `
             src/main.py
 
-      - name: Build with PyInstaller (Linux)
+      - name: Build with PyInstaller (Linux - onefile for single binary)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          pyinstaller --noconfirm --onedir --windowed \
-            --name "KeymodTest" \
+          pyinstaller --noconfirm --onefile --windowed \
+            --name "keymod-test" \
             --add-data "src:src" \
             --add-data "src/config.py:." \
             --hidden-import "bleak.backends.bluezdbus" \
@@ -132,45 +133,95 @@ jobs:
             --hidden-import "config" \
             src/main.py
 
-      - name: Package for macOS
+      # ── Package & Upload ─────────────────────────────────────────
+      # 直接上传 dist/ 目录（onedir 模式）或 dist/ 可执行文件（onefile 模式）
+      # GitHub Actions 会自动打包为 ZIP 供下载，解压即得“可直接运行”的目录结构
+      # 仅在 tag 触发时额外生成发布包（DMG / ZIP / tar.gz）
+
+      - name: Prepare artifact for macOS
         if: matrix.os == 'macos-latest'
         run: |
-          cd dist
-          # 创建 DMG
-          hdiutil create -volname "KeymodTest" -srcfolder KeymodTest -ov -format UDZO KeymodTest-macos.dmg
-          echo "DMG created: $(ls -lh KeymodTest-macos.dmg)"
+          # onedir 输出在 dist/KeymodTest.app
+          # 直接上传整个 .app 目录
+          echo "Artifact path: dist/KeymodTest.app"
 
-      - name: Package for Windows
+      - name: Prepare artifact for Windows
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          cd dist
-          # 创建 ZIP - 只包含 KeymodTest 文件夹内容，不包两层
-          Compress-Archive -Path "KeymodTest\*" -DestinationPath "KeymodTest-windows.zip"
-          # 显示文件大小
-          $file = Get-Item KeymodTest-windows.zip
-          Write-Host "ZIP created: $($file.Name) - $([math]::Round($file.Length / 1MB, 2)) MB"
+          # onefile 输出在 dist/KeymodTest.exe
+          # 直接上传 exe 文件
+          echo "Artifact path: dist/KeymodTest.exe"
 
-      - name: Package for Linux
+      - name: Prepare artifact for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
-          cd dist
-          # 创建 tar.gz - 只包含 KeymodTest 文件夹内容，不包两层
-          tar -czf KeymodTest-linux.tar.gz -C KeymodTest .
-          echo "Archive created: $(ls -lh KeymodTest-linux.tar.gz)"
+          # onefile 输出在 dist/keymod-test
+          chmod +x dist/keymod-test
+          echo "Artifact path: dist/keymod-test"
 
-      - name: Upload artifact
+      - name: Upload artifact (macOS)
+        if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: dist/${{ matrix.asset_name }}
+          path: dist/KeymodTest.app
           retention-days: 30
 
-      - name: Release (only on tags)
+      - name: Upload artifact (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/KeymodTest.exe
+          retention-days: 30
+
+      - name: Upload artifact (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/keymod-test
+          retention-days: 30
+
+      # ── Release Assets (only on tags) ────────────────────────────
+      - name: Create macOS DMG (release)
+        if: matrix.os == 'macos-latest' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          hdiutil create -volname "KeymodTest" -srcfolder dist/KeymodTest.app -ov -format UDZO KeymodTest-macos.dmg
+          echo "DMG created: $(ls -lh KeymodTest-macos.dmg)"
+
+      - name: Create Windows ZIP (release)
+        if: matrix.os == 'windows-latest' && startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          # 创建发布 ZIP：包含 exe + 说明文件
+          New-Item -ItemType Directory -Force -Path dist/KeymodTest-release | Out-Null
+          Copy-Item dist/KeymodTest.exe dist/KeymodTest-release/
+          # 可选：添加 README
+          "Keymod BLE Tester - Windows Release`n双击 KeymodTest.exe 即可运行" | Out-File -Encoding UTF8 dist/KeymodTest-release/README.txt
+          Compress-Archive -Path "dist/KeymodTest-release/*" -DestinationPath "KeymodTest-windows.zip"
+          $file = Get-Item KeymodTest-windows.zip
+          Write-Host "Release ZIP: $($file.Name) - $([math]::Round($file.Length / 1MB, 2)) MB"
+
+      - name: Create Linux tar.gz (release)
+        if: matrix.os == 'ubuntu-latest' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          mkdir -p dist/keymod-test-release
+          cp dist/keymod-test dist/keymod-test-release/
+          echo "Keymod BLE Tester - Linux Release" > dist/keymod-test-release/README.txt
+          echo "运行: ./keymod-test" >> dist/keymod-test-release/README.txt
+          tar -czf KeymodTest-linux.tar.gz -C dist/keymod-test-release .
+          echo "Release archive: $(ls -lh KeymodTest-linux.tar.gz)"
+
+      - name: Upload release assets
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/${{ matrix.asset_name }}
+          files: |
+            KeymodTest-macos.dmg
+            KeymodTest-windows.zip
+            KeymodTest-linux.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -186,7 +237,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Build completed for all platforms." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Downloads" >> $GITHUB_STEP_SUMMARY
-          echo "- macOS: Check Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- Windows: Check Artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- Linux: Check Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts (download from Actions page)" >> $GITHUB_STEP_SUMMARY
+          echo "- **macOS**: `keymod-test-macos` — 解压后得到 `KeymodTest.app`，双击运行" >> $GITHUB_STEP_SUMMARY
+          echo "- **Windows**: `keymod-test-windows` — 直接得到 `KeymodTest.exe`，双击运行" >> $GITHUB_STEP_SUMMARY
+          echo "- **Linux**: `keymod-test-linux` — 直接得到 `keymod-test`，赋予执行权限后运行" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> **提示**：下载 Artifact 后解压即可直接使用，无需二次解压" >> $GITHUB_STEP_SUMMARY

@@ -1,9 +1,19 @@
 """Keymod BLE Tester — 入口"""
 import sys
+import os
+
+# ── PyInstaller --windowed 兼容 ──────────────────────────────────
+# Windows 下使用 --windowed 模式时 sys.stderr / sys.stdout 为 None，
+# 必须在任何模块（尤其是 faulthandler）使用前修复
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
+# ────────────────────────────────────────────────────────────────
+
 import asyncio
 import traceback
 import faulthandler
-import os
 from pathlib import Path
 
 # 启用 faulthandler — 崩溃时输出 Python 栈到 stderr
