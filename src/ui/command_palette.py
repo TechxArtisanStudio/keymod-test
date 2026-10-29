@@ -25,7 +25,7 @@ class CommandPalette(QWidget):
         self._layout.setSpacing(8)
         self._layout.setContentsMargins(4, 4, 4, 4)
 
-        # 按顺序添加命令卡片（每行 4 个）
+        # 按顺序添加命令卡片（每行 2 个）
         row, col = 0, 0
         for cmd, meta in sorted(COMMAND_META.items()):
             # Tooltip 使用富文本
@@ -35,7 +35,7 @@ class CommandPalette(QWidget):
             self._layout.addWidget(card, row, col)
 
             col += 1
-            if col >= 4:
+            if col >= 2:
                 col = 0
                 row += 1
 

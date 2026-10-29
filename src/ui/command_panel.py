@@ -64,7 +64,7 @@ class CommandPanel(QWidget):
         splitter.addWidget(right_panel)
 
         # 设置分割比例
-        splitter.setSizes([250, 650])
+        splitter.setSizes([220, 680])
 
         layout.addWidget(splitter, stretch=1)
 

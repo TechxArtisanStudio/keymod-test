@@ -239,19 +239,19 @@ class CommandCard(QFrame):
                 border-color: #007ACC;
             }
         """)
-        self.setFixedSize(120, 60)
+        self.setFixedSize(90, 44)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setContentsMargins(6, 4, 6, 4)
 
         self._cmd_label = QLabel(f"0x{cmd:02X}")
-        self._cmd_label.setStyleSheet("color: #569CD6; font-weight: bold; font-size: 12px;")
+        self._cmd_label.setStyleSheet("color: #569CD6; font-weight: bold; font-size: 11px;")
         self._cmd_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self._cmd_label)
 
         self._name_label = QLabel(name)
-        self._name_label.setStyleSheet("color: #CCCCCC; font-size: 10px;")
+        self._name_label.setStyleSheet("color: #CCCCCC; font-size: 9px;")
         self._name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._name_label.setWordWrap(True)
         layout.addWidget(self._name_label)
