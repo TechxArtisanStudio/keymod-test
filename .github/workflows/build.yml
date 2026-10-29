@@ -51,7 +51,7 @@ jobs:
           pyinstaller --noconfirm --onedir --windowed \
             --name "KeymodTest" \
             --add-data "src:src" \
-            --add-data "config.py:." \
+            --add-data "src/config.py:." \
             --hidden-import "bleak.backends.corebluetooth" \
             --hidden-import "bleak.backends.corebluetooth.CentralManagerDelegate" \
             --hidden-import "bleak.backends.corebluetooth.PeripheralDelegate" \
@@ -82,7 +82,7 @@ jobs:
           pyinstaller --noconfirm --onedir --windowed `
             --name "KeymodTest" `
             --add-data "src;src" `
-            --add-data "config.py;." `
+            --add-data "src/config.py;." `
             --hidden-import "bleak.backends.winrt" `
             --hidden-import "bleak.backends.winrt.scanner" `
             --hidden-import "bleak.backends.winrt.client" `
@@ -110,7 +110,7 @@ jobs:
           pyinstaller --noconfirm --onedir --windowed \
             --name "KeymodTest" \
             --add-data "src:src" \
-            --add-data "config.py:." \
+            --add-data "src/config.py:." \
             --hidden-import "bleak.backends.bluezdbus" \
             --hidden-import "bleak.backends.bluezdbus.scanner" \
             --hidden-import "bleak.backends.bluezdbus.client" \
