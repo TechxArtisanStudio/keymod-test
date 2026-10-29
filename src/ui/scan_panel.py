@@ -148,6 +148,8 @@ class ScanPanel(QWidget):
         self._table.setAlternatingRowColors(True)
         self._table.setShowGrid(False)
         self._table.verticalHeader().setVisible(False)
+        self._table.verticalHeader().setDefaultSectionSize(32)  # 行高
+        self._table.setMinimumHeight(300)  # 最小高度
         self._table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
@@ -161,6 +163,10 @@ class ScanPanel(QWidget):
                 color: #D4D4D4;
                 gridline-color: #3E3E3E;
                 border: 1px solid #3E3E3E;
+                min-height: 300px;
+            }
+            QTableView::item {
+                padding: 6px;
             }
             QTableView::item:selected {
                 background-color: #007ACC;
@@ -168,8 +174,9 @@ class ScanPanel(QWidget):
             QHeaderView::section {
                 background-color: #2D2D2D;
                 color: #CCCCCC;
-                padding: 4px;
+                padding: 6px;
                 border: 1px solid #3E3E3E;
+                min-height: 30px;
             }
         """)
         self._table.doubleClicked.connect(self._on_row_double_clicked)
