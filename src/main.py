@@ -93,9 +93,10 @@ def main():
     """主函数"""
     import signal
 
-    # 注册信号处理器（捕获崩溃信号）
-    for sig in (signal.SIGSEGV, signal.SIGABRT, signal.SIGBUS):
-        signal.signal(sig, signal_handler)
+    # 注册信号处理器（仅 Unix 平台支持 SIGSEGV 等）
+    if sys.platform != "win32":
+        for sig in (signal.SIGSEGV, signal.SIGABRT, signal.SIGBUS):
+            signal.signal(sig, signal_handler)
 
     # 设置全局异常钩子
     sys.excepthook = exception_hook
