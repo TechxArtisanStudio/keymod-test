@@ -1,0 +1,138 @@
+name: Build and Package
+
+on:
+  push:
+    tags:
+      - 'v*'  # 推送标签时触发（如 v1.0.0）
+    branches:
+      - main  # 推送到 main 分支时触发
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact_name: keymod-test-macos
+            executable_name: keymod-test
+            asset_name: KeymodTest-macos.dmg
+          - os: windows-latest
+            artifact_name: keymod-test-windows
+            executable_name: keymod-test.exe
+            asset_name: KeymodTest-windows.zip
+          - os: ubuntu-latest
+            artifact_name: keymod-test-linux
+            executable_name: keymod-test
+            asset_name: KeymodTest-linux.tar.gz
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          pyinstaller --noconfirm --onedir --windowed \
+            --name "KeymodTest" \
+            --add-data "src:src" \
+            --hidden-import "bleak.backends.corebluetooth" \
+            --hidden-import "bleak.backends.corebluetooth.CentralManagerDelegate" \
+            --hidden-import "bleak.backends.corebluetooth.PeripheralDelegate" \
+            --hidden-import "bleak.backends.corebluetooth.scanner" \
+            --hidden-import "bleak.backends.corebluetooth.client" \
+            --osx-bundle-identifier com.techxartisanstudio.keymodtest \
+            src/main.py
+
+      - name: Build with PyInstaller (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          pyinstaller --noconfirm --onedir --windowed `
+            --name "KeymodTest" `
+            --add-data "src;src" `
+            --hidden-import "bleak.backends.winrt" `
+            --hidden-import "bleak.backends.winrt.scanner" `
+            --hidden-import "bleak.backends.winrt.client" `
+            src/main.py
+
+      - name: Build with PyInstaller (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          pyinstaller --noconfirm --onedir --windowed \
+            --name "KeymodTest" \
+            --add-data "src:src" \
+            --hidden-import "bleak.backends.bluezdbus" \
+            --hidden-import "bleak.backends.bluezdbus.scanner" \
+            --hidden-import "bleak.backends.bluezdbus.client" \
+            src/main.py
+
+      - name: Package for macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd dist
+          # 创建 DMG
+          hdiutil create -volname "KeymodTest" -srcfolder KeymodTest -ov -format UDZO KeymodTest-macos.dmg
+          echo "DMG created: $(ls -lh KeymodTest-macos.dmg)"
+
+      - name: Package for Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd dist
+          # 创建 ZIP
+          7z a KeymodTest-windows.zip KeymodTest/
+          echo "ZIP created: $(ls -lh KeymodTest-windows.zip)"
+
+      - name: Package for Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          cd dist
+          # 创建 tar.gz
+          tar -czf KeymodTest-linux.tar.gz KeymodTest/
+          echo "Archive created: $(ls -lh KeymodTest-linux.tar.gz)"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/${{ matrix.asset_name }}
+          retention-days: 30
+
+      - name: Release (only on tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/${{ matrix.asset_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: build
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## 📦 Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Build completed for all platforms." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Downloads" >> $GITHUB_STEP_SUMMARY
+          echo "- macOS: Check Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows: Check Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux: Check Artifacts" >> $GITHUB_STEP_SUMMARY
