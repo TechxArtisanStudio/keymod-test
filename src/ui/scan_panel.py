@@ -154,8 +154,8 @@ class ScanPanel(QWidget):
         self._table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         self._table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
         self._table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
-        self._table.setColumnWidth(2, 80)
-        self._table.setColumnWidth(3, 100)
+        self._table.setColumnWidth(2, 100)
+        self._table.setColumnWidth(3, 120)
         self._table.setStyleSheet("""
             QTableView {
                 background-color: #1E1E1E;
