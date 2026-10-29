@@ -50,7 +50,7 @@ jobs:
         run: |
           pyinstaller --noconfirm --onedir --windowed \
             --name "KeymodTest" \
-            --add-data "src:src" \
+            --paths src \
             --add-data "src/config.py:." \
             --hidden-import "bleak.backends.corebluetooth" \
             --hidden-import "bleak.backends.corebluetooth.CentralManagerDelegate" \
@@ -61,6 +61,7 @@ jobs:
             --hidden-import "PyQt6.QtWidgets" \
             --hidden-import "PyQt6.QtGui" \
             --hidden-import "qasync" \
+            --hidden-import "ui" \
             --hidden-import "ui.main_window" \
             --hidden-import "ui.scan_panel" \
             --hidden-import "ui.command_panel" \
@@ -68,8 +69,10 @@ jobs:
             --hidden-import "ui.ecm_test_panel" \
             --hidden-import "ui.widgets" \
             --hidden-import "ui.command_palette" \
+            --hidden-import "ble" \
             --hidden-import "ble.scanner" \
             --hidden-import "ble.client" \
+            --hidden-import "protocol" \
             --hidden-import "protocol.ch9329" \
             --hidden-import "protocol.models" \
             --hidden-import "config" \
@@ -82,7 +85,7 @@ jobs:
         run: |
           pyinstaller --noconfirm --onefile --windowed `
             --name "KeymodTest" `
-            --add-data "src;src" `
+            --paths src `
             --add-data "src/config.py;." `
             --hidden-import "bleak.backends.winrt" `
             --hidden-import "bleak.backends.winrt.scanner" `
@@ -91,6 +94,7 @@ jobs:
             --hidden-import "PyQt6.QtWidgets" `
             --hidden-import "PyQt6.QtGui" `
             --hidden-import "qasync" `
+            --hidden-import "ui" `
             --hidden-import "ui.main_window" `
             --hidden-import "ui.scan_panel" `
             --hidden-import "ui.command_panel" `
@@ -98,8 +102,10 @@ jobs:
             --hidden-import "ui.ecm_test_panel" `
             --hidden-import "ui.widgets" `
             --hidden-import "ui.command_palette" `
+            --hidden-import "ble" `
             --hidden-import "ble.scanner" `
             --hidden-import "ble.client" `
+            --hidden-import "protocol" `
             --hidden-import "protocol.ch9329" `
             --hidden-import "protocol.models" `
             --hidden-import "config" `
@@ -110,7 +116,7 @@ jobs:
         run: |
           pyinstaller --noconfirm --onefile --windowed \
             --name "keymod-test" \
-            --add-data "src:src" \
+            --paths src \
             --add-data "src/config.py:." \
             --hidden-import "bleak.backends.bluezdbus" \
             --hidden-import "bleak.backends.bluezdbus.scanner" \
@@ -119,6 +125,7 @@ jobs:
             --hidden-import "PyQt6.QtWidgets" \
             --hidden-import "PyQt6.QtGui" \
             --hidden-import "qasync" \
+            --hidden-import "ui" \
             --hidden-import "ui.main_window" \
             --hidden-import "ui.scan_panel" \
             --hidden-import "ui.command_panel" \
@@ -126,8 +133,10 @@ jobs:
             --hidden-import "ui.ecm_test_panel" \
             --hidden-import "ui.widgets" \
             --hidden-import "ui.command_palette" \
+            --hidden-import "ble" \
             --hidden-import "ble.scanner" \
             --hidden-import "ble.client" \
+            --hidden-import "protocol" \
             --hidden-import "protocol.ch9329" \
             --hidden-import "protocol.models" \
             --hidden-import "config" \
